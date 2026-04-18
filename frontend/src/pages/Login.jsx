@@ -47,6 +47,7 @@ const Login = () => {
       sessionStorage.setItem("token", res.data.token);
       sessionStorage.setItem("role", res.data.role);
       sessionStorage.setItem("username", res.data.user.username);
+      sessionStorage.setItem("userId", res.data.user._id);
 
       navigate(res.data.role === "admin" ? "/admin" : "/dashboard");
     } catch (err) {

@@ -5,10 +5,16 @@ const scoreSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User"
   },
+  quiz: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Quiz"
+  },
   name: String,
-  score: Number
+  score: Number,
+  questions: Array
 }, {
-  strict: false
+  strict: false,
+  timestamps: true
 });
 
 export const Score = mongoose.model("Score", scoreSchema);

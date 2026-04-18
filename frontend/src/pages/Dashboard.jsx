@@ -36,31 +36,31 @@ const Dashboard = () => {
     }
   };
 
-  // dashboard stats from leaderboard
+  // Fetch my scores
   useEffect(() => {
     axios
-      .get("http://localhost:3000/api/leaderboard")
+      .get("http://localhost:3000/api/quiz/my-scores", {
+        headers: { Authorization: `Bearer ${token}` }
+      })
       .then((res) => {
-        try {
-          const userId = JSON.parse(atob(token.split(".")[1])).id;
-          const allData = res.data || [];
-          const myEntries = allData.filter(d => 
-             (d.user && d.user._id === userId) || d.user === userId || d._id === userId
-          );
-          setScores(myEntries.map(s => s.score));
-          
-          // Rank finding
-          const rankIndex = allData.findIndex(d => 
-             (d.user && d.user._id === userId) || d.user === userId
-          );
-          if (rankIndex !== -1) {
-            localStorage.setItem("myRank", rankIndex + 1);
-          }
-        } catch {
-          setScores([]);
-        }
+        setScores(res.data.map(s => s.score));
       })
       .catch(() => setScores([]));
+  }, [token]);
+
+  // Fetch rank from leaderboard (optional but nice)
+  useEffect(() => {
+    axios.get("http://localhost:3000/api/leaderboard")
+      .then(res => {
+        const userId = sessionStorage.getItem("userId");
+        const rankIndex = res.data.findIndex(d => 
+          (d.user && (d.user._id === userId || d.user === userId)) || d._id === userId
+        );
+        if (rankIndex !== -1) {
+          sessionStorage.setItem("myRank", rankIndex + 1);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // fetch quizzes
@@ -123,7 +123,7 @@ const Dashboard = () => {
               <p className="text-slate-500 font-medium">Leaderboard Rank</p>
             </div>
             <h2 className="text-4xl font-bold text-slate-900 mt-2">
-              #{localStorage.getItem("myRank") || "-"}
+              #{sessionStorage.getItem("myRank") || "-"}
             </h2>
           </div>
 

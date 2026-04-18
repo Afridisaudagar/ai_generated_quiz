@@ -6,7 +6,7 @@ export default function Leaderboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const currentUserId = localStorage.getItem("userId");
+  const currentUserId = sessionStorage.getItem("userId");
 
   useEffect(() => {
     axios

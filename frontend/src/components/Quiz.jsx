@@ -12,6 +12,8 @@ const Quiz = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [timeLeft, setTimeLeft] = useState(null);
+  const [showResult, setShowResult] = useState(false);
+  const [finalScore, setFinalScore] = useState(0);
 
   const token = sessionStorage.getItem("token");
 
@@ -23,10 +25,16 @@ const Quiz = () => {
       if (answers[i] === q.answer) score++;
     });
 
+    setFinalScore(score);
+
     try {
         await axios.post(
           "http://localhost:3000/api/quiz/submit",
-          { score },
+          { 
+            score, 
+            quizId: id, 
+            questions: questions // Send the questions generated for this session
+          },
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -37,7 +45,7 @@ const Quiz = () => {
         console.error("Submission error:", err);
     }
 
-    navigate("/dashboard");
+    setShowResult(true);
   };
 
   useEffect(() => {
@@ -132,12 +140,109 @@ const Quiz = () => {
           <p className="text-slate-500 mt-3 font-medium">
             {error ? "There was an error connecting to the server." : "Check back later for new content."}
           </p>
-          <button 
-            onClick={() => navigate("/courses")}
-            className="mt-8 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all"
-          >
-            Back to Quizzes
-          </button>
+          <div className="flex flex-col gap-3 mt-8">
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-md active:scale-95"
+            >
+              🔄 Retry Generation
+            </button>
+            <button 
+              onClick={() => navigate("/courses")}
+              className="w-full bg-white border border-slate-200 text-slate-600 font-bold py-3.5 rounded-xl hover:bg-slate-50 transition-all"
+            >
+              Back to Quizzes
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (showResult) {
+    const scoreColor = (finalScore / questions.length) >= 0.7 ? "text-green-600" : (finalScore / questions.length) >= 0.4 ? "text-yellow-600" : "text-red-600";
+    
+    return (
+      <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6">
+        <div className="max-w-3xl mx-auto">
+          {/* Header Card */}
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-8 text-center mb-8">
+            <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">
+              { (finalScore / questions.length) >= 0.7 ? "🎉" : "💪" }
+            </div>
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">Quiz Completed!</h1>
+            <p className="text-slate-500 font-medium mb-6">Here is how you performed</p>
+            
+            <div className="flex justify-center gap-12 py-6 border-y border-slate-50">
+              <div className="text-center">
+                <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">Your Score</p>
+                <p className={`text-4xl font-black ${scoreColor}`}>{finalScore} <span className="text-slate-300">/</span> {questions.length}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">Percentage</p>
+                <p className={`text-4xl font-black ${scoreColor}`}>{Math.round((finalScore / questions.length) * 100)}%</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="mt-8 px-10 py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all shadow-lg hover:shadow-xl active:scale-95"
+            >
+              Finish & Return Dashboard
+            </button>
+          </div>
+
+          {/* Detailed Review Section */}
+          <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-3 px-2">
+            Detailed Performance Review
+          </h2>
+          
+          <div className="space-y-6">
+            {questions.map((q, idx) => {
+              const isCorrect = answers[idx] === q.answer;
+              return (
+                <div key={idx} className={`bg-white rounded-2xl p-6 border-l-4 shadow-sm ${isCorrect ? "border-l-green-500" : "border-l-red-500"}`}>
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <p className="text-lg font-bold text-slate-800 leading-tight">
+                      <span className="text-slate-400 mr-2">Q{idx + 1}.</span> {q.question}
+                    </p>
+                    {isCorrect ? (
+                      <span className="flex-shrink-0 bg-green-50 text-green-600 p-1.5 rounded-full">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                      </span>
+                    ) : (
+                      <span className="flex-shrink-0 bg-red-50 text-red-600 p-1.5 rounded-full">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className={`p-4 rounded-xl border ${isCorrect ? "bg-green-50 border-green-100 text-green-800" : "bg-red-50 border-red-100 text-red-800"}`}>
+                      <p className="text-xs font-black uppercase tracking-widest mb-1 opacity-60">Your Answer</p>
+                      <p className="font-bold">{answers[idx] || "Not Answered"}</p>
+                    </div>
+
+                    {!isCorrect && (
+                      <div className="p-4 rounded-xl border bg-blue-50 border-blue-100 text-blue-800">
+                        <p className="text-xs font-black uppercase tracking-widest mb-1 opacity-60">Correct Answer</p>
+                        <p className="font-bold">{q.answer}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-12 text-center pb-12">
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="px-8 py-3 text-slate-500 hover:text-slate-800 font-bold transition-all"
+            >
+              ← Back to Home
+            </button>
+          </div>
         </div>
       </div>
     );

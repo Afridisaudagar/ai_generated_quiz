@@ -9,10 +9,38 @@ import { Score } from "../models/score.model.js";
 import { IdentiyUser } from "../middleware/auth.middleware.js";
 
 import { Mistral } from "@mistralai/mistralai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const client = new Mistral({
   apiKey: process.env.MISTRAL_API_KEY
 });
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const gemini = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+// Helper to extract JSON from AI response strings
+const extractJson = (text) => {
+  try {
+    // Look for everything between the first { or [ and the last } or ]
+    const jsonMatch = text.match(/[\{\[][\s\S]*[\}\]]/);
+    if (!jsonMatch) throw new Error("No JSON found in response");
+    
+    let jsonStr = jsonMatch[0];
+    return JSON.parse(jsonStr);
+  } catch (err) {
+    console.error("JSON PARSE ERROR:", err.message);
+    // Fallback cleanup for common LLM noise
+    let cleanText = text
+      .replace(/```json/gi, "")
+      .replace(/```/gi, "")
+      .trim();
+    try {
+      return JSON.parse(cleanText);
+    } catch (innerErr) {
+       throw new Error("Could not parse AI response as JSON");
+    }
+  }
+};
 
 
 // AI GENERATE QUIZ
@@ -161,16 +189,30 @@ Each question MUST include a "skill" field from the given skills.
 // (Legacy /quiz route removed to prevent stale data)
 
 
+// Get user's own scores
+router.get("/my-scores", IdentiyUser, async (req, res) => {
+  try {
+    const scores = await Score.find({ user: req.user.id }).sort({ createdAt: -1 });
+    res.json(scores);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching my scores" });
+  }
+});
+
+
 // Submit score
 router.post("/submit", IdentiyUser, async (req, res) => {
   try {
-    const { score } = req.body;
+    const { score, quizId, questions } = req.body;
     const newScore = await Score.create({
       user: req.user.id,
+      quiz: quizId,
       score,
+      questions // Store the questions seen in this session
     });
     res.json(newScore);
   } catch (err) {
+    console.error("SUBMIT ERROR:", err);
     res.status(500).json({ message: "Error saving score" });
   }
 });
@@ -224,12 +266,11 @@ router.get("/:id", IdentiyUser, async (req, res) => {
     const quiz = await Quiz.findById(req.params.id);
     if (!quiz) return res.status(404).json({ message: "Quiz not found" });
 
-    // FORCE DYNAMIC: If it was created by an admin through the AI generator 
-    // OR if it's explicitly marked dynamic OR if it has no questions.
-    const isAiGenerated = quiz.isDynamic || quiz.createdBy || (quiz.questions && quiz.questions.length <= 10);
-    const isManualQuiz = quiz.subject === "Custom Quiz" || !quiz.targetSkills; // Simple heuristic
+    // FORCE DYNAMIC: Students always get a fresh set if the quiz is AI-compatible
+    const isAiCompatible = quiz.subject && (quiz.isDynamic || quiz.questions.length <= 10);
+    const isStudent = req.user.role === "student" || true; // Apply to all for now to be safe
 
-    if (isAiGenerated && !isManualQuiz) {
+    if (isAiCompatible && isStudent) {
       const topic = quiz.subject;
       const skills = quiz.targetSkills || "Knowledge, Application, Analysis";
       const userId = req.user.id;
@@ -239,87 +280,81 @@ router.get("/:id", IdentiyUser, async (req, res) => {
       const timestamp = Date.now();
       const randomValue = Math.random();
 
-      try {
-        const response = await client.chat.complete({
-          model: "mistral-small-latest",
-          messages: [
-            {
-              role: "system",
-              content: `You are an advanced AI quiz generator for an AI education platform called "Antigravity". 
-CRITICAL CONTEXT: This quiz is generated dynamically for each user. Multiple users may request quizzes for the SAME topic at the SAME time.`
-            },
-            {
-              role: "user",
-              content: `
-USER_ENTROPY:
-- userSeed: ${userSeed}
-- timestamp: ${timestamp}
-- random: ${randomValue}
+      // ADVANCED UNIQUENESS: Topic Jittering
+      const angles = ["Practical/Scenario-based", "Theoretical/Conceptual", "Debugging/Problem-solving", "Edge-cases/Advanced"];
+      const selectedAngle = angles[Math.floor(randomValue * angles.length)];
 
-You MUST use this entropy to generate a UNIQUE quiz every time.
+      // FEATURE: Non-Repetitive AI (Fetch user history for this quiz)
+      const previousAttempts = await Score.find({ 
+          user: userId, 
+          quiz: quiz._id 
+      }).sort({ createdAt: -1 }).limit(3);
 
----
-STRICT RULES:
+      const historyQuestions = previousAttempts.flatMap(attempt => 
+          (attempt.questions || []).map(q => q.question)
+      );
 
-1. Topic Restriction: Generate questions ONLY from this category: "${topic}"
-2. Skills Restriction: Generate questions ONLY based on these skills: "${skills}"
-Each question MUST include a "skill" field.
+      const excludeConstraint = historyQuestions.length > 0 
+        ? `\nFORBIDDEN QUESTIONS (VOID THESE):\n${historyQuestions.join("\n")}\n`
+        : "";
 
----
-3. ⚠️ USER-SPECIFIC UNIQUENESS (MOST IMPORTANT):
-* Use the entropy values (userSeed, timestamp, random) as a RANDOM SEED
-* These values are DIFFERENT for each user -> so output MUST be DIFFERENT
+      const aiPrompt = `
+Generate a UNIQUE 10-question quiz session for Antigravity Platform.
+TOPIC: "${topic}"
+FOCUS ANGLE: "${selectedAngle}"
+SKILLS: "${skills}"
+SESSION_SEED: ${timestamp}-${randomValue}
 
-You MUST:
-* Change concepts used in questions
-* Change question wording completely
-* Use different real-world scenarios
-* Use different examples (numbers, variables, cases)
-* Shuffle difficulty and types
+${excludeConstraint}
 
-Even if topic & skills are SAME:
-👉 Questions MUST NOT match across users
-
----
-4. Anti-Repetition:
-* NEVER repeat questions
-* NEVER generate similar patterns
-* Avoid generic or textbook questions
-* Each quiz must feel freshly generated
-
----
-5. Question Variety: Include mix of: Conceptual, Code-based, Debugging, Output prediction.
-6. Difficulty Mix: Easy, Medium, Hard
-7. Forbidden Questions: DO NOT generate any questions related to unrelated subjects.
-8. Output Format (STRICT JSON ONLY):
+STRICT INSTRUCTIONS:
+1. Every question must be novel and different from common textbook versions.
+2. Use different wording and scenarios.
+3. Return ONLY valid JSON in this format:
 {
   "questions": [
     {
       "question": "string",
       "options": ["A", "B", "C", "D"],
       "correctAnswer": "A",
-      "skill": "one of the given skills",
-      "difficulty": "easy | medium | hard"
+      "skill": "string",
+      "difficulty": "easy|medium|hard"
     }
   ]
 }
+`;
 
----
-9. Count: Generate exactly 10 questions.
-10. FINAL INSTRUCTION (CRITICAL): If 100 users request the same topic at the same time, ALL of them MUST receive DIFFERENT question sets using the entropy values.
+      let aiResponseText = "";
+      let engineUsed = "Mistral-7B";
 
-DO NOT return anything except valid JSON.`
-            }
-          ],
-          temperature: 1,
-          topP: 0.95
-        });
+      try {
+        // Step 1: Try Mistral (Increase timeout to 30s for complex generation)
+        try {
+          const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 30000));
+          const mistralPromise = client.chat.complete({
+            model: "mistral-small-latest",
+            messages: [{ role: "user", content: aiPrompt }],
+            temperature: 1.15 // High entropy for uniqueness
+          });
 
-        let text = response.choices[0].message.content;
-        text = text.replace(/```json/gi, "").replace(/```/gi, "").trim();
+          const response = await Promise.race([mistralPromise, timeout]);
+          aiResponseText = response.choices[0].message.content;
+        } catch (mistralErr) {
+          console.warn("Mistral Error/Timeout, falling back to Gemini...");
+          engineUsed = "Gemini-Pro-Flash";
+          // Use -latest suffix which is more reliably supported in many SDK versions
+          let geminiModelInstance = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+          try {
+             const geminiResult = await geminiModelInstance.generateContent(aiPrompt);
+             aiResponseText = geminiResult.response.text();
+          } catch (geminiErr) {
+             console.error("Gemini failed too:", geminiErr.message);
+             throw new Error("All AI Engines failed");
+          }
+        }
 
-        let data = JSON.parse(text);
-        let questions = data.questions ? data.questions : data;
+        const data = extractJson(aiResponseText);
+        const questions = data.questions ? data.questions : data;
 
         const formattedQuestions = questions.map(q => ({
           question: q.question,
@@ -335,16 +370,100 @@ DO NOT return anything except valid JSON.`
           timeLimit: quiz.timeLimit,
           questions: formattedQuestions.slice(0, 10),
           isDynamic: true,
-          engine: "ChaosV3", // Debug marker to prove new code is live
-          sessionEntropy: sessionEntropy.substring(0, 10)
+          engine: engineUsed,
+          historyCount: historyQuestions.length,
+          angle: selectedAngle
         });
 
       } catch (aiError) {
-        console.error("DYNAMIC AI ERROR:", aiError.message);
-        // If it fails, return error rather than stale questions
-        return res.status(500).json({ 
-          message: "AI Generation failed. This ensures you never get same questions.",
-          error: aiError.message 
+        console.error("CRITICAL AI FAILURE:", aiError.message);
+        
+        // FINAL FALLBACK: Randomized pool to ensure uniqueness even when offline
+        const shuffle = (array) => array.sort(() => Math.random() - 0.5);
+        
+        const baseQuestions = [
+          {
+            question: `Which fundamental concept of ${topic} is most critical for scalability?`,
+            options: ["Modular Design", "Hardcoded Values", "Single File Architecture", "No Documentation"],
+            answer: "Modular Design",
+            skill: "Architecture",
+            difficulty: "medium"
+          },
+          {
+            question: `In the context of ${topic}, what does "Latency" typically refer to?`,
+            options: ["Time delay", "Storage capacity", "Color depth", "User count"],
+            answer: "Time delay",
+            skill: "Technical",
+            difficulty: "easy"
+          },
+          {
+            question: `When debugging a ${topic} application, what is the first logical step?`,
+            options: ["Checking logs", "Reinstalling OS", "Deleting project", "Ignoring issue"],
+            answer: "Checking logs",
+            skill: "Problem Solving",
+            difficulty: "easy"
+          },
+          {
+            question: `True or False: ${topic} principles are evolving and require constant learning.`,
+            options: ["True", "False"],
+            answer: "True",
+            skill: "Professional Growth",
+            difficulty: "easy"
+          },
+          {
+            question: `A "bottleneck" in a ${topic} system results in?`,
+            options: ["Reduced performance", "Increased speed", "Better security", "Smaller files"],
+            answer: "Reduced performance",
+            skill: "Analysis",
+            difficulty: "medium"
+          },
+          {
+            question: `What is the primary goal of studying ${topic}?`,
+            options: ["Understanding core principles", "Memorizing facts", "Increasing complexity", "None of the above"],
+            answer: "Understanding core principles",
+            skill: "Analysis",
+            difficulty: "easy"
+          },
+          {
+            question: `Which of the following is a key characteristic of ${topic}?`,
+            options: ["Efficiency", "Redundancy", "Consistency", "All of the above"],
+            answer: "All of the above",
+            skill: "Conceptual",
+            difficulty: "medium"
+          },
+          {
+            question: "In a professional setting, why is troubleshooting important?",
+            options: ["To find the root cause", "To ignore the problem", "To blame others", "To restart everything"],
+            answer: "To find the root cause",
+            skill: "Problem Solving",
+            difficulty: "hard"
+          },
+          {
+            question: `Which tool is most commonly associated with ${topic}?`,
+            options: ["Standard industry tools", "Social media", "Basic calculators", "Manual processes"],
+            answer: "Standard industry tools",
+            skill: "Technical",
+            difficulty: "easy"
+          },
+          {
+            question: `How does ${topic} typically improve workflow?`,
+            options: ["By automating repetitive tasks", "By adding more manual steps", "By slowing down communication", "It has no impact"],
+            answer: "By automating repetitive tasks",
+            skill: "Efficiency",
+            difficulty: "medium"
+          }
+        ];
+ 
+        const randomizedQuestions = shuffle(baseQuestions).slice(0, 5); // Take 5 random ones
+ 
+        return res.json({
+          _id: quiz._id,
+          subject: `${quiz.subject} (Safe Mode)`,
+          questions: randomizedQuestions,
+          isDynamic: true,
+          engine: "Randomized-Fallback",
+          historyCount: 0,
+          uniqueSeed: Math.random().toString(36).substring(7)
         });
       }
     }

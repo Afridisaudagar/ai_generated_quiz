@@ -137,7 +137,7 @@ const Admin = () => {
                  Dashboard
                </button>
                <button
-                 onClick={() => { localStorage.removeItem("token"); window.location.href = "/login"; }}
+                 onClick={() => { sessionStorage.removeItem("token"); window.location.href = "/login"; }}
                  className="px-4 py-2 bg-red-50 text-red-600 font-bold rounded-xl text-sm hover:bg-red-100 transition-colors"
                >
                  Logout
