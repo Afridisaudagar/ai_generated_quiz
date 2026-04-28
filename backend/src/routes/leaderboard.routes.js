@@ -5,11 +5,32 @@ const router = express.Router();
 
 router.get("/", async (req, res) => {
   try {
-    const leaderboard = await Score.find()
-      .populate("user")
-      .sort({ score: -1 });
-console.log(JSON.stringify(leaderboard, null, 2));
-    res.json(leaderboard);
+    const leaderboard = await Score.aggregate([
+      {
+        $group: {
+          _id: "$user",
+          totalScore: { $sum: "$score" }
+        }
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "user"
+        }
+      },
+      { $unwind: "$user" },
+      { $sort: { totalScore: -1 } },
+      { $limit: 20 }
+    ]);
+
+    const formatted = leaderboard.map(entry => ({
+      ...entry,
+      score: entry.totalScore
+    }));
+
+    res.json(formatted);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -1,6 +1,12 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
+import authRouter from './routes/auth.routes.js';
+import quizRouter from './routes/quiz.routes.js';
+import leaderboardRouter from './routes/leaderboard.routes.js';
+import adminRouter from './routes/admin.routes.js';
+import wellnessRouter from './routes/wellness.routes.js';
+
 const app = express();
 
 
@@ -15,15 +21,11 @@ app.use(
 
 
 
-import authRouter from './routes/auth.routes.js';
-import quizRouter from './routes/quiz.routes.js';
-import leaderboardRouter from './routes/leaderboard.routes.js';
-import adminRouter from './routes/admin.routes.js';
-
-
 app.use("/api/auth", authRouter);
 app.use("/api/quiz", quizRouter);
 app.use("/api/leaderboard", leaderboardRouter);
-app.use("/api/admin", adminRouter);     
+app.use("/api/admin", adminRouter);
+app.use("/api/wellness", wellnessRouter);
+     
 
 export default app;

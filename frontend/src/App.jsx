@@ -11,6 +11,10 @@ import Leaderboard from "./adminComponent/Leaderboard";
 import Quiz from "./components/Quiz";
 import Navbar from "./components/Navbar";
 import Courses from "./pages/Courses";
+import Wellness from "./components/Wellness";
+import SpacedRepetition from "./components/SpacedRepetition";
+import GoalLearning from "./components/GoalLearning";
+import StreaksProgress from "./components/StreaksProgress";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin }) => {
@@ -48,6 +52,10 @@ const App = () => {
             <Route path="/chats" element={<ProtectedRoute><Chats /></ProtectedRoute>} />
             <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
             <Route path="/quiz/:id" element={<ProtectedRoute><Quiz /></ProtectedRoute>} />
+            <Route path="/wellness" element={<ProtectedRoute><Wellness /></ProtectedRoute>} />
+            <Route path="/spaced-repetition" element={<ProtectedRoute><SpacedRepetition /></ProtectedRoute>} />
+            <Route path="/goal-learning" element={<ProtectedRoute><GoalLearning /></ProtectedRoute>} />
+            <Route path="/streaks" element={<ProtectedRoute><StreaksProgress /></ProtectedRoute>} />
             
             {/* Protected Admin Routes */}
             <Route path="/admin" element={<ProtectedRoute requireAdmin={true}><Admin /></ProtectedRoute>} />

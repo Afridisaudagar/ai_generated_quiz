@@ -39,6 +39,32 @@ const Courses = () => {
           </div>
         </div>
 
+        {/* Wellness Hub Banner */}
+        <div 
+          onClick={() => navigate("/wellness")}
+          className="mb-10 bg-gradient-to-r from-[#2563EB]/10 via-[#2563EB]/5 to-transparent border border-[#2563EB]/10 rounded-3xl p-6 sm:p-8 cursor-pointer group hover:border-[#2563EB]/30 transition-all duration-300 relative overflow-hidden"
+        >
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center text-blue-600 shadow-md group-hover:scale-110 transition-transform">
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-2 py-0.5 bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest rounded-md">New Feature</span>
+                  <h2 className="text-xl font-bold text-slate-900">Student Wellness Hub</h2>
+                </div>
+                <p className="text-slate-500 text-sm font-medium max-w-md">How are you feeling today? Check in with yourself and get personalized learning tips to boost your mental focus.</p>
+              </div>
+            </div>
+            <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-600/20 transition-all group-hover:px-8">
+              Open Wellness Hub
+            </button>
+          </div>
+          {/* Decorative element */}
+          <div className="absolute -right-16 -top-16 w-64 h-64 bg-blue-600/5 rounded-full blur-3xl group-hover:bg-blue-600/10 transition-colors"></div>
+        </div>
+
         {/* Loading State */}
         {loading && (
           <div className="flex justify-center items-center h-48">

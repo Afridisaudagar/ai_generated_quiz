@@ -33,7 +33,7 @@ export default function Chart({ scores = [] }) {
   const estimatedTime = `${totalQuizzes * 10}m`;
   
   const courseCompletion = Math.min(Math.round((totalQuizzes / 10) * 100), 100);
-  const skillLevel = Math.min(Math.round((averageScore / 100) * 100), 100);
+  const skillLevel = Math.min(Math.round((averageScore / 10) * 100), 100);
 
   const chartData = {
     labels: scores.map((_, i) => `Quiz ${i + 1}`),
