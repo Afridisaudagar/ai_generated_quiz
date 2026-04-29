@@ -1,4 +1,10 @@
 {
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "install-backend": "cd backend && npm install",
+    "postinstall": "npm run install-backend"
+  },
   "dependencies": {
     "lucide-react": "^1.8.0"
   }

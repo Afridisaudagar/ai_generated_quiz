@@ -15,6 +15,7 @@ import Wellness from "./components/Wellness";
 import SpacedRepetition from "./components/SpacedRepetition";
 import GoalLearning from "./components/GoalLearning";
 import StreaksProgress from "./components/StreaksProgress";
+import SmartDoubtSolver from "./components/SmartDoubtSolver";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin }) => {
@@ -56,6 +57,7 @@ const App = () => {
             <Route path="/spaced-repetition" element={<ProtectedRoute><SpacedRepetition /></ProtectedRoute>} />
             <Route path="/goal-learning" element={<ProtectedRoute><GoalLearning /></ProtectedRoute>} />
             <Route path="/streaks" element={<ProtectedRoute><StreaksProgress /></ProtectedRoute>} />
+            <Route path="/doubt-solver" element={<ProtectedRoute><SmartDoubtSolver /></ProtectedRoute>} />
             
             {/* Protected Admin Routes */}
             <Route path="/admin" element={<ProtectedRoute requireAdmin={true}><Admin /></ProtectedRoute>} />

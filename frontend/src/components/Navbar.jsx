@@ -50,7 +50,8 @@ const Navbar = () => {
     { name: 'Wellness Hub', path: '/wellness', icon: '❤️' },
     { name: 'Spaced Repetition', path: '/spaced-repetition', icon: '🧠' },
     { name: 'Goal Planning', path: '/goal-learning', icon: '🎯' },
-    { name: 'Streaks & Rewards', path: '/streaks', icon: '🔥' }
+    { name: 'Streaks & Rewards', path: '/streaks', icon: '🔥' },
+    { name: 'Doubt Solver', path: '/doubt-solver', icon: '🤖' }
   ];
 
   return (

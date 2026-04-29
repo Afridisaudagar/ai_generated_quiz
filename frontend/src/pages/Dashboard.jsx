@@ -293,6 +293,31 @@ const Dashboard = () => {
                     <svg className="w-3 h-3 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
                   </div>
                 </div>
+
+                  {/* Smart Doubt Solver */}
+                  <div className="bg-gradient-to-br from-cyan-50 to-blue-50 border border-cyan-100 rounded-2xl p-5 group cursor-pointer hover:shadow-md transition-all duration-300"
+                      onClick={() => navigate("/doubt-solver")}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-cyan-600 shadow-sm transition-transform group-hover:scale-110">
+                        <span className="text-xl">🤖</span>
+                      </div>
+                      <span className="text-xs font-bold text-cyan-400 uppercase tracking-widest">Tutor</span>
+                    </div>
+                    <h3 className="text-sm font-bold text-slate-800 mb-1">Smart Doubt Solver</h3>
+                    <p className="text-[10px] leading-relaxed text-slate-500 mb-4">
+                      AI tutor that explains concepts like a teacher. Step-by-step guidance.
+                    </p>
+                    <button 
+                      className="w-full bg-white hover:bg-slate-50 text-cyan-600 text-[10px] font-black py-2 rounded-lg transition-all border border-cyan-100 shadow-sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate("/doubt-solver", { state: { weakMode: true } });
+                      }}
+                    >
+                      Explain like I’m a weak student
+                    </button>
+                  </div>
+
             </div>
 
             <h2 className="text-lg font-bold text-slate-900 mb-4">
